@@ -1,6 +1,6 @@
 import requests
 from os import mkdir
-from enum import Enum
+from enum import IntEnum
 from time import sleep
 from faker import Faker
 from lxml.etree import HTML
@@ -8,7 +8,7 @@ from os.path import exists, join
 from multiprocessing import Pool, Manager
 
 
-class PackageType(Enum):
+class PackageType(IntEnum):
     """
     数据包类型。
     """
@@ -38,14 +38,6 @@ class Package:
         self._url = url
         self._channel = channel
 
-    def __repr__(self):
-        return '''\n=====================
-type: {}
-name: {}
-url: {}
-channel: {}
-====================='''.format(self.type, self.name, self.url, self.channel)
-
     @property
     def name(self):
         return self._name
@@ -61,6 +53,14 @@ channel: {}
     @property
     def channel(self):
         return self._channel
+
+    def __repr__(self):
+        return '''\n=====================
+type: {}
+name: {}
+url: {}
+channel: {}
+====================='''.format(self.type, self.name, self.url, self.channel)
 
 
 class MziTuSpider:
