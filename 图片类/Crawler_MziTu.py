@@ -86,16 +86,17 @@ class MziTuSpider:
                                  'Chrome/55.0.2883.87 Safari/537.36'}
 
     # 代理IP，没有就改成proxies = [None]
-    proxies = [{'http': 'http://120.210.219.73:8080'},
-               {'http': 'http://222.66.94.130:80'},
-               {'http': 'http://117.191.11.74:80'},
-               {'http': 'http://39.105.229.239:8080'}]
+    proxies = [{'http': 'http://117.191.11.102:80'},
+{'http': 'http://117.191.11.107:80'},
+{'http': 'http://117.191.11.72:8080'},
+{'http': 'http://117.191.11.113:8080'},
+{'http': 'http://117.191.11.104:80'}]
 
-    def __init__(self, channel, page_num, process_num, sleep_time, timeout=7):
+    def __init__(self, process_num, channel='首页', page_num=1, sleep_time=2.3, timeout=7):
         """
+        :param process_num: 子进程数量。
         :param channel: 图片类型。
         :param page_num: 爬取的页数。
-        :param process_num: 子进程数量。
         :param sleep_time: 睡眠时间。
         :param timeout: 超时等待时间。
         """
@@ -114,7 +115,7 @@ class MziTuSpider:
         self._pool = ''
 
     @classmethod
-    def download_img(cls, url, img_path, timeout=7):  # 图片下载方法
+    def download_img(cls, url, img_path, timeout=7):
         """
         图片下载方法。
         :param url: 图片网址。
@@ -198,6 +199,7 @@ class MziTuSpider:
                 print('【图集下载成功】', name)
             # 图片包处理方法
             elif PackageType.IMG == package.type:
+                sleep(sleep_time)
                 if not exists(channel):
                     mkdir(channel)
                 while True:
@@ -285,7 +287,7 @@ class MziTuSpider:
         # 初始化进程池
         self._pool = Pool(self.process_num)
         for _ in range(self.process_num):
-            self._pool.apply_async(self.__class__.handle_package, [self._queue, self.sleep_time, self.timeout])
+            self._pool.apply_async(self.handle_package, [self._queue, self.sleep_time, self.timeout])
         # 爬取指定图集
         if album_url:
             self.parse_album(album_url)
@@ -314,14 +316,16 @@ class MziTuSpider:
 
 
 def main():
-    for k in MziTuSpider.channels.keys():
-        print('\t{}'.format(k), end='')
-    channel = input('\n请选择图片类型：')
-    page_num = int(input('请输入下载的页数：'))
-    process_num = int(input('请输入子进程数：'))
-    sleep_time = float(input('请输入休眠时间：'))
-    spider = MziTuSpider(channel, page_num, process_num, sleep_time)
-    spider.run()
+    album_url = input('请输入图集网址：').strip()
+    process_num = int(input('请输入子进程数量：').strip())
+    sleep_time = float(input('请输入休眠时间：').strip())
+    # for k in MziTuSpider.channels.keys():
+    #     print('\t{}'.format(k), end='')
+    # channel = input('\n请选择图片类型：')
+    # page_num = int(input('请输入下载的页数：'))
+    # spider = MziTuSpider(process_num, channel, page_num, sleep_time)
+    spider = MziTuSpider(process_num, sleep_time=sleep_time)
+    spider.run(album_url)
 
 
 if __name__ == '__main__':

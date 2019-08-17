@@ -28,7 +28,10 @@ headers = {'Accept': '*/*',
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [None]
+proxies = [{'http': 'http://101.4.136.34:81'},
+{'http': 'http://222.66.94.130:80'},
+{'http': 'http://117.191.11.74:80'},
+{'http': 'http://39.105.229.239:8080'}]
 
 
 def download_img(queue, sleep_time, folder):
