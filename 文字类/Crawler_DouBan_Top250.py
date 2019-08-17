@@ -50,5 +50,6 @@ if __name__ == '__main__':
     ws = wb.active
     for m in msg:
         ws.append(m)  # 将数据写入表格
-    wb.save('豆瓣Top250(截止' + strftime("%Y-%m-%d") + ').xlsx')
-    input('保存成功。')
+    file_name = '豆瓣Top250(截止{}).xlsx'.format(strftime("%Y-%m-%d"))
+    wb.save(file_name)
+    input('豆瓣Top250信息已保存到“{}”中。'.format(file_name))
