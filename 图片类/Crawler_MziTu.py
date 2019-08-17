@@ -209,7 +209,7 @@ class MziTuSpider:
 
     def parse_album(self, url):
         """
-        解析图集方法。将其中的图片或图集打包成数据包，输入到队列中。
+        解析图集方法。将其中的图片信息打包成数据包，输入到队列中。
         :param url: 图集网址。
         :return: 成功返回1，若网址不存在返回0。
         """
@@ -242,7 +242,7 @@ class MziTuSpider:
 
     def parse_html(self, url):
         """
-        解析网页方法。将其中的图片或图集打包成数据包，输入到队列中。
+        解析网页方法。将其中的图片或图集信息打包成数据包，输入到队列中。
         :param url: 网址。
         :return: 成功返回1，若网址不存在返回0。
         """
