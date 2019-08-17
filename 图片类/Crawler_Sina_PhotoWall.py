@@ -1,9 +1,9 @@
-from os import mkdir
-from os.path import exists
 import requests
-from lxml import etree
-from time import time, sleep
+from os import mkdir
 from faker import Faker
+from lxml.etree import HTML
+from time import time, sleep
+from os.path import exists, join
 from multiprocessing import Pool, Manager
 
 img_headers = {'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -13,10 +13,7 @@ img_headers = {'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,
                'pragma': 'no-cache',
                'dnt': '1',
                # 'Host': 'wx1.sinaimg.cn',
-               # 'If-Modified-Since': 'Sat, 21 Jul 2018 13:18:01 GMT',
-               # 'If-None-Match': "0A8B1918CFB14BD13EA4D819E568BE66",
                # 'Referer': 'http://photo.weibo.com/',
-               # 'Referer': 'http://photo.weibo.com',
                'upgrade-insecure-requests': '1'}
 
 headers = {'Accept': '*/*',
@@ -24,43 +21,38 @@ headers = {'Accept': '*/*',
            'Accept-Language': 'zh-CN,zh;q=0.8',
            'Connection': 'keep-alive',
            'Content-Type': 'application/x-www-form-urlencoded',
-           'Cookie': '',
            'DNT': '1',
            'Host': 'weibo.com',
-           'Referer': '',
            'X-Requested-With': 'XMLHttpRequest',
            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [{'http': 'http://101.4.136.34:81'},
-           {'http': 'http://120.210.219.73:8080'},
-           {'http': 'http://117.191.11.74:80'},
-           {'http': 'http://39.105.229.239:8080'},
-           {'http': 'http://182.116.225.142:9999'}]
+proxies = [None]
 
 
-def download_img(q, sleep_time, folder):
+def download_img(queue, sleep_time, folder):
     """
     图片下载方法。
-    :param q: 队列。
+    :param queue: 队列。
     :param sleep_time: 休眠时间。
-    :param folder: 文件夹。
+    :param folder: 文件夹名称。
     """
-    print('method:img_download processing...')
     f = Faker()
     buffer_size = 1024
     while True:
-        if q.empty():
+        # 若队列为空，休眠1秒
+        if queue.empty():
             sleep(1)
             continue
-        package = q.get_nowait()
+        # 从队列中取出数据包
+        package = queue.get_nowait()
+        # 若数据包为0，结束当前进程
         if 0 == package:
-            print('package:{}, method end.'.format(package))
             return
         url = package.get('url')
         title = package.get('title')
-        if exists('{}/{}'.format(folder, title)):
+        if exists(join(folder, title)):
             continue
         img_headers['user-agent'] = f.user_agent()
         # img_headers['Host'] = url.split('/')[2]
@@ -72,8 +64,9 @@ def download_img(q, sleep_time, folder):
                 print(url, '下载失败，错误信息：{}，尝试重新下载......'.format(e))
                 continue
             if response.status_code in (200, 304):
-                with open('{}/{}'.format(folder, title), 'wb') as file:
+                with open(join(folder, title), 'wb') as file:
                     # file.write(response.content)
+                    # 图片的体积较大，采用流方式写入
                     for chunk in response.iter_content(buffer_size):
                         if chunk:
                             file.write(chunk)
@@ -81,17 +74,34 @@ def download_img(q, sleep_time, folder):
                 break
             print(url, '下载失败，错误码：{}，尝试重新下载......'.format(response.status_code))
             continue
+        # 休眠
         sleep(sleep_time)
+
+
+def set_params(action_data, params_dict):
+    """
+    设置ajax参数。。
+    :param action_data: 数据。
+    :param params_dict: 参数字典。
+    """
+    for item in action_data.split('&'):
+        a = item.split('=')
+        params_dict[a[0]] = a[1]
+    # 页数+1
+    params_dict['page'] = params_dict.get('page') + 1
+    params_dict['__rnd'] = str(round(time() * 1000))
 
 
 def main():
     # url = 'https://weibo.com/p/1004061393786362/photos?from=page_100406&mod=TAB'
     url = input('请输入照片墙网址：').strip()
     # 需要先登录微博
-    # 然后照片墙页面打开开发者工具（按F12），在Network标签随便找一个请求，里边应该就有cookies。
-    cookies = input('请输入Cookie：').strip()
+    # 然后在任意微博页面打开开发者工具（按F12），刷新页面
+    # 在Network标签随便里找一个请求，在请求的Request Headers里边复制Cookie即可
+    # PS：模拟登录功能正在编写中，敬请期待……
+    cookie = input('请输入Cookie：').strip()
     headers['Referer'] = url
-    headers['Cookie'] = cookies
+    headers['Cookie'] = cookie
     while True:
         try:
             page_num = int(input('请输入页数：'))
@@ -134,11 +144,12 @@ def main():
     # 发送ajax请求时的参数
     params = {'ajwvr': '6',
               'page_id': url.split('/')[4],
-              'page': '2',
+              'page': 1,
               'ajax_call': 1}
     package = {}
     for i in range(1, page_num + 1):
         sleep(process_sleep_time)
+        # 第1页解析方法
         if 1 == i:
             while True:
                 try:
@@ -152,13 +163,13 @@ def main():
                     continue
                 break
             text = response.text
-            script = text[text.rfind('html":"') + 7: text.rfind('"')]
-            content = etree.HTML(script)
+            content = HTML(text[text.rfind('html":"') + 7: text.rfind('"')])
             folder = text[text.find('<title>') + 7: text.find('</title>')].replace('微博_微博', '照片墙')
             if not exists(folder):
                 mkdir(folder)
             for _ in range(process_num):
                 pool.apply_async(download_img, [queue, process_sleep_time, folder])
+            print('——————————————开始下载——————————————')
             for img in content.xpath("//a[@class='\\\"ph_ar_box\\\"']/img/@src"):
                 img_data = img.split('/')
                 package['title'] = img_data[-2][:img_data[-2].rfind('?')]
@@ -166,13 +177,9 @@ def main():
                 queue.put_nowait(package)
             temp = text[text.rfind('WB_cardwrap S_bg2'):]
             action_data = temp[temp.find('action-data') + 14: temp.find(r'\">')]
-            # 从action_data中找出ajax请求的参数
-            for dat in action_data.split('&'):
-                a = dat.split('=')
-                params[a[0]] = a[1]
-            params['__rnd'] = str(round(time() * 1000))
+            set_params(action_data, params)
             continue
-
+        # 其它页解析方法
         while True:
             try:
                 response = requests.get('https://weibo.com/p/aj/album/loading', params=params, headers=headers,
@@ -186,23 +193,16 @@ def main():
             break
         json = response.json()
         if json.get('code') != '100000':
-            print('第{}页加载失败，失败原因：{}'.format(i, json.get('msg')))
+            print('第{}页加载失败，失败原因：{}'.format(params.get('page'), json.get('msg')))
             continue
-        content = etree.HTML(json.get('data'))
-        # print(etree.tostring(content, pretty_print=True).decode('utf8'))
+        content = HTML(json.get('data'))
         for img in content.xpath('/html/body/div/ul/li/div/a[@class="ph_ar_box"]/img/@src'):
             img_data = img.split('/')
             package['title'] = img_data[-1][:img_data[-1].rfind('?')]
-            package['url'] = 'https://' + img_data[2] + '/large/' + package['title']
+            package['url'] = 'https://{}/large/{}'.format(img_data[2], package.get('title'))
             queue.put_nowait(package)
-            print('{}已入列。'.format(package['url']))
         action_data = content.xpath('//div[@class="WB_cardwrap S_bg2"]/@action-data')[0]
-        # 从action_data中找出ajax请求的参数
-        for dat in action_data.split('&'):
-            a = dat.split('=')
-            params[a[0]] = a[1]
-        params['page'] = i + 1
-        params['__rnd'] = str(round(time() * 1000))
+        set_params(action_data, params)
     # 向队列中输入0，通知子进程结束
     for _ in range(process_num):
         queue.put_nowait(0)
