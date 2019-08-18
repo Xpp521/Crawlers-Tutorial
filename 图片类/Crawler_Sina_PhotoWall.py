@@ -28,10 +28,14 @@ headers = {'Accept': '*/*',
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [{'http': 'http://101.4.136.34:81'},
-{'http': 'http://222.66.94.130:80'},
-{'http': 'http://117.191.11.74:80'},
-{'http': 'http://39.105.229.239:8080'}]
+proxies = [{'http': 'http://39.137.69.8:8080'},
+           {'http': 'http://117.191.11.73:80'},
+           {'http': 'http://117.191.11.112:80'},
+           {'http': 'http://117.191.11.75:8080'},
+           {'http': 'http://117.191.11.79:80'},
+           {'http': 'http://117.191.11.101:80'},
+           {'http': 'http://117.191.11.111:8080'},
+           {'http': 'http://117.191.11.108:80'}]
 
 
 def download_img(queue, sleep_time, folder):
@@ -83,7 +87,7 @@ def download_img(queue, sleep_time, folder):
 
 def set_params(action_data, params_dict):
     """
-    设置ajax参数。。
+    设置ajax请求的参数。
     :param action_data: 数据。
     :param params_dict: 参数字典。
     """
@@ -91,67 +95,34 @@ def set_params(action_data, params_dict):
         a = item.split('=')
         params_dict[a[0]] = a[1]
     # 页数+1
-    params_dict['page'] = params_dict.get('page') + 1
+    params_dict['page'] = params_dict.get('page', 1) + 1
     params_dict['__rnd'] = str(round(time() * 1000))
 
 
 def main():
     # url = 'https://weibo.com/p/1004061393786362/photos?from=page_100406&mod=TAB'
     url = input('请输入照片墙网址：').strip()
-    # 需要先登录微博
-    # 然后在任意微博页面打开开发者工具（按F12），刷新页面
-    # 在Network标签随便里找一个请求，在请求的Request Headers里边复制Cookie即可
+    # 需要先登录微博，然后在任意微博页面打开开发者工具（按F12），刷新页面
+    # 在Network标签\里找到第一个请求，在请求的Request Headers里边复制Cookie即可。
     # PS：模拟登录功能正在编写中，敬请期待……
     cookie = input('请输入Cookie：').strip()
     headers['Referer'] = url
     headers['Cookie'] = cookie
-    while True:
-        try:
-            page_num = int(input('请输入页数：'))
-        except ValueError:
-            print('必须输入正整数！请重新输入。')
-            continue
-        if page_num <= 0:
-            print('必须输入正整数！请重新输入。')
-            continue
-        break
-    while True:
-        try:
-            process_num = int(input('请输入下载的进程数：'))
-        except ValueError:
-            print('输入格式错误！必须是≥1的数字，请重新输入。')
-            continue
-        if process_num < 1:
-            print('输入格式错误！必须是≥1的数字，请重新输入。')
-            continue
-        break
-    while True:
-        try:
-            process_sleep_time = input('请输入子进程的休眠时间（按回车默认休眠1秒）：')
-            if '' == process_sleep_time:
-                process_sleep_time = 1.
-            else:
-                process_sleep_time = float(process_sleep_time)
-        except ValueError:
-            print('输入格式错误！必须是正数，请重新输入。')
-            continue
-        if process_sleep_time < 0:
-            print('输入格式错误！必须是正数，请重新输入。')
-            continue
-        break
+    page_num = int(input('输入页数：'))
+    process_num = int(input('输入子进程数量：'))
+    sleep_time = float(input('输入子进程休眠时间（秒）：'))
     # 队列
     queue = Manager().Queue()
     # 进程池
     pool = Pool(process_num)
     faker = Faker()
-    # 发送ajax请求时的参数
+    # ajax请求的参数
     params = {'ajwvr': '6',
               'page_id': url.split('/')[4],
-              'page': 1,
               'ajax_call': 1}
     package = {}
     for i in range(1, page_num + 1):
-        sleep(process_sleep_time)
+        sleep(sleep_time)
         # 第1页解析方法
         if 1 == i:
             while True:
@@ -170,13 +141,15 @@ def main():
             folder = text[text.find('<title>') + 7: text.find('</title>')].replace('微博_微博', '照片墙')
             if not exists(folder):
                 mkdir(folder)
+            # 初始化进程池
             for _ in range(process_num):
-                pool.apply_async(download_img, [queue, process_sleep_time, folder])
+                pool.apply_async(download_img, [queue, sleep_time, folder])
             print('——————————————开始下载——————————————')
             for img in content.xpath("//a[@class='\\\"ph_ar_box\\\"']/img/@src"):
                 img_data = img.split('/')
                 package['title'] = img_data[-2][:img_data[-2].rfind('?')]
-                package['url'] = 'https://' + img_data[2][:img_data[2].find('\\')] + '/large/' + package['title']
+                package['url'] = 'https://{}/large/{}'.format(img_data[2][:img_data[2].find('\\')],
+                                                              package.get('title'))
                 queue.put_nowait(package)
             temp = text[text.rfind('WB_cardwrap S_bg2'):]
             action_data = temp[temp.find('action-data') + 14: temp.find(r'\">')]
@@ -185,6 +158,7 @@ def main():
         # 其它页解析方法
         while True:
             try:
+                # 模拟发送ajax请求
                 response = requests.get('https://weibo.com/p/aj/album/loading', params=params, headers=headers,
                                         proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
             except Exception as e:
@@ -197,7 +171,7 @@ def main():
         json = response.json()
         if json.get('code') != '100000':
             print('第{}页加载失败，失败原因：{}'.format(params.get('page'), json.get('msg')))
-            continue
+            break
         content = HTML(json.get('data'))
         for img in content.xpath('/html/body/div/ul/li/div/a[@class="ph_ar_box"]/img/@src'):
             img_data = img.split('/')
@@ -205,6 +179,7 @@ def main():
             package['url'] = 'https://{}/large/{}'.format(img_data[2], package.get('title'))
             queue.put_nowait(package)
         action_data = content.xpath('//div[@class="WB_cardwrap S_bg2"]/@action-data')[0]
+        # 设置下一页ajax请求时的参数
         set_params(action_data, params)
     # 向队列中输入0，通知子进程结束
     for _ in range(process_num):
