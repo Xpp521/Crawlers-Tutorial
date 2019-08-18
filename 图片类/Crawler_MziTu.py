@@ -1,8 +1,8 @@
 import requests
 from os import mkdir
-from enum import IntEnum
 from time import sleep
 from faker import Faker
+from enum import IntEnum
 from lxml.etree import HTML
 from os.path import exists, join
 from multiprocessing import Pool, Manager
@@ -10,7 +10,7 @@ from multiprocessing import Pool, Manager
 
 class PackageType(IntEnum):
     """
-    数据包类型。
+    数据包类型枚举类。
     """
     EMPTY = 0       # 空包
     ALBUM = 1       # 图集
@@ -19,14 +19,14 @@ class PackageType(IntEnum):
 
 class Package:
     """
-    队列数据包类。
+    数据包类。
     """
     def __init__(self, package_type, name='', url='', channel=''):
         """
-        :param package_type: 数据类型。
+        :param package_type: 数据包类型。
         :param name: 名称。
         :param url: 网址。
-        :param channel: 图片类型。
+        :param channel: 图片分类。
         """
         if not isinstance(package_type, PackageType):
             raise TypeError('数据包类型错误。')
@@ -60,7 +60,7 @@ type: {}
 name: {}
 url: {}
 channel: {}
-====================='''.format(self.type, self.name, self.url, self.channel)
+====================='''.format(self._type, self._name, self._url, self._channel)
 
 
 class MziTuSpider:
@@ -87,15 +87,15 @@ class MziTuSpider:
 
     # 代理IP，没有就改成proxies = [None]
     proxies = [{'http': 'http://117.191.11.102:80'},
-{'http': 'http://117.191.11.107:80'},
-{'http': 'http://117.191.11.72:8080'},
-{'http': 'http://117.191.11.113:8080'},
-{'http': 'http://117.191.11.104:80'}]
+               {'http': 'http://117.191.11.107:80'},
+               {'http': 'http://117.191.11.72:8080'},
+               {'http': 'http://117.191.11.113:8080'},
+               {'http': 'http://117.191.11.104:80'}]
 
     def __init__(self, process_num, channel='首页', page_num=1, sleep_time=2.3, timeout=7):
         """
         :param process_num: 子进程数量。
-        :param channel: 图片类型。
+        :param channel: 图片分类。
         :param page_num: 爬取的页数。
         :param sleep_time: 睡眠时间。
         :param timeout: 超时等待时间。
@@ -291,7 +291,7 @@ class MziTuSpider:
         # 爬取指定图集
         if album_url:
             self.parse_album(album_url)
-        # 按照设置爬取分类图片
+        # 爬取分类图片
         else:
             # 构造url列表
             if '所有' == self.channel:
@@ -316,9 +316,9 @@ class MziTuSpider:
 
 
 def main():
-    album_url = input('请输入图集网址：').strip()
-    process_num = int(input('请输入子进程数量：').strip())
-    sleep_time = float(input('请输入休眠时间：').strip())
+    album_url = input('输入图集网址：').strip()
+    process_num = int(input('输入子进程数量：').strip())
+    sleep_time = float(input('输入休眠时间：').strip())
     # for k in MziTuSpider.channels.keys():
     #     print('\t{}'.format(k), end='')
     # channel = input('\n请选择图片类型：')
