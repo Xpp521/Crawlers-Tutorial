@@ -67,7 +67,10 @@ class MziTuSpider:
     """
     www.mzitu.com爬虫类。
     """
-    channels = {'首页': 'https://www.mzitu.com/',
+    channels = {'最新': 'https://www.mzitu.com/',
+                '最热': 'https://www.mzitu.com/hot/',
+                '推荐': 'https://www.mzitu.com/best/',
+                # '专题': 'https://www.mzitu.com/zhuanti/',
                 '性感': 'https://www.mzitu.com/xinggan/',
                 '日本': 'https://www.mzitu.com/japan/',
                 '台湾': 'https://www.mzitu.com/taiwan/',
@@ -76,23 +79,16 @@ class MziTuSpider:
                 '街拍': 'https://www.mzitu.com/jiepai/',
                 '所有': 'https://www.mzitu.com/all/'}
 
+    # 代理IP，没有就改成proxies = [None]
+    proxies = [{'http': 'http://{}'.format(line.rstrip())} for line in open('proxies_2019_08_19.txt')]
+
     web_headers = {'Upgrade-Insecure-Requests': '1',
                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                  'Chrome/55.0.2883.87 Safari/537.36'}
 
-    img_headers = {'referer': 'https://www.mzitu.com/',
-                   'Upgrade-Insecure-Requests': '1',
-                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                                 'Chrome/55.0.2883.87 Safari/537.36'}
+    img_headers = {'referer': 'https://www.mzitu.com/', 'Upgrade-Insecure-Requests': '1'}
 
-    # 代理IP，没有就改成proxies = [None]
-    proxies = [{'http': 'http://117.191.11.102:80'},
-               {'http': 'http://117.191.11.107:80'},
-               {'http': 'http://117.191.11.72:8080'},
-               {'http': 'http://117.191.11.113:8080'},
-               {'http': 'http://117.191.11.104:80'}]
-
-    def __init__(self, process_num, channel='首页', page_num=1, sleep_time=2.3, timeout=7):
+    def __init__(self, process_num, channel='最新', page_num=1, sleep_time=2.3, timeout=7):
         """
         :param process_num: 子进程数量。
         :param channel: 图片分类。
@@ -149,6 +145,7 @@ class MziTuSpider:
         :param sleep_time: 每次下载后的休眠时间。
         :param timeout: 超时等待时间。
         """
+        f = Faker()
         while True:
             # 若队列为空，休眠1秒
             if queue.empty():
@@ -182,7 +179,7 @@ class MziTuSpider:
                 img_url = img_url[: img_url.rfind('/') + 4]
                 print('【开始下载图集】', name)
                 for i in range(1, 100):
-                    sleep(sleep_time)
+                    sleep(f.random_int(1, sleep_time))
                     num = '0{}'.format(i) if 0 < i < 10 else i
                     while True:
                         if exists(join(channel, name, '{}.jpg'.format(num))):
@@ -199,7 +196,7 @@ class MziTuSpider:
                 print('【图集下载成功】', name)
             # 图片包处理方法
             elif PackageType.IMG == package.type:
-                sleep(sleep_time)
+                sleep(f.random_int(1, sleep_time))
                 if not exists(channel):
                     mkdir(channel)
                 while True:
@@ -318,7 +315,7 @@ class MziTuSpider:
 def main():
     album_url = input('输入图集网址：').strip()
     process_num = int(input('输入子进程数量：').strip())
-    sleep_time = float(input('输入休眠时间：').strip())
+    sleep_time = float(input('输入最大休眠时间：').strip())
     # for k in MziTuSpider.channels.keys():
     #     print('\t{}'.format(k), end='')
     # channel = input('\n请选择图片类型：')

@@ -28,14 +28,11 @@ headers = {'Accept': '*/*',
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [{'http': 'http://39.137.69.8:8080'},
-           {'http': 'http://117.191.11.73:80'},
-           {'http': 'http://117.191.11.112:80'},
-           {'http': 'http://117.191.11.75:8080'},
-           {'http': 'http://117.191.11.79:80'},
-           {'http': 'http://117.191.11.101:80'},
-           {'http': 'http://117.191.11.111:8080'},
-           {'http': 'http://117.191.11.108:80'}]
+proxies = [{'http': 'http://117.191.11.109:80'},
+           {'http': 'http://183.146.213.198:80'},
+           {'http': 'http://183.146.213.157:80'},
+           {'http': 'http://39.137.69.10:8080'},
+           {'http': 'http://39.137.69.7:8080'}]
 
 
 def download_img(queue, sleep_time, folder):
@@ -45,6 +42,7 @@ def download_img(queue, sleep_time, folder):
     :param sleep_time: 休眠时间。
     :param folder: 文件夹名称。
     """
+    global proxies
     f = Faker()
     buffer_size = 1024
     while True:
@@ -82,7 +80,7 @@ def download_img(queue, sleep_time, folder):
             print(url, '下载失败，错误码：{}，尝试重新下载......'.format(response.status_code))
             continue
         # 休眠
-        sleep(sleep_time)
+        sleep(f.random_int(1, sleep_time))
 
 
 def set_params(action_data, params_dict):
@@ -100,6 +98,7 @@ def set_params(action_data, params_dict):
 
 
 def main():
+    global proxies
     # url = 'https://weibo.com/p/1004061393786362/photos?from=page_100406&mod=TAB'
     url = input('请输入照片墙网址：').strip()
     # 需要先登录微博，然后在任意微博页面打开开发者工具（按F12），刷新页面
