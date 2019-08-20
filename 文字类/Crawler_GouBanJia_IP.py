@@ -6,7 +6,9 @@ from PyQt4 import QtGui, QtCore, QtWebKit
 
 
 class Render(QtWebKit.QWebPage):
-
+    """
+    渲染网页类。
+    """
     def __init__(self, url):
         self.app = QtGui.QApplication([])
         QtWebKit.QWebPage.__init__(self)
