@@ -1,5 +1,5 @@
-import time
-import requests
+from time import time
+from requests import get
 from pyperclip import copy
 from bs4 import BeautifulSoup
 from PyQt4 import QtGui, QtCore, QtWebKit
@@ -7,7 +7,7 @@ from PyQt4 import QtGui, QtCore, QtWebKit
 
 class Render(QtWebKit.QWebPage):
     """
-    渲染网页类。
+    网页渲染类。可执行JS脚本。
     """
     def __init__(self, url):
         self.app = QtGui.QApplication([])
@@ -21,27 +21,32 @@ class Render(QtWebKit.QWebPage):
         self.app.quit()
 
     def userAgentForUrl(self, QUrl):
-        user_agent = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'
-        return user_agent
+        return 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 ' \
+               'Safari/537.36 '
 
 
 class IpSpider:
     url = 'http://www.goubanjia.com/'
 
     def test(self, socket):
-        proxies = {'http': 'http://' + socket}
+        """
+        测试代理IP是否有效。
+        :param socket: IP:Port。
+        :return: 有效返回True，否则返回False。
+        """
         try:
-            response = requests.get('http://www.ip38.com/', proxies=proxies, timeout=5)
+            get('http://www.ip38.com/', proxies={'http': 'http://' + socket}, timeout=5)
         except Exception:
             return False
         return True
 
     def run(self):
-        begin_time = time.time()
+        begin_time = time()
         print('开始加载网页......')
+        # 使用Render类渲染网页
         response = Render(self.url)
         content = response.frame.toHtml()
-        print('网页加载成功。（用时' + str(time.time() - begin_time) + '秒）')
+        print('网页加载成功。（用时' + str(time() - begin_time) + '秒）')
         print('开始测试ip......')
         bs = BeautifulSoup(content, 'lxml')
         ip_infos = bs.find_all('tr', style='')
@@ -77,13 +82,13 @@ class IpSpider:
         if '' == strr:
             input('(⊙o⊙)...非常遗憾，本次没抓到可用的代理IP。')
         else:
-            # f = open('代理IP.txt', 'a')
-            # f.write(strr + '\n\n')
-            # f.close()
+            with open('代理IP.txt', 'a') as f:
+                f.write('{}\n\n'.format(strr))
             copy(strr)
-            input('结果已复制到剪贴板~')
+            print('结果已复制到剪贴板~')
         return result
 
 
 if __name__ == '__main__':
     IpSpider().run()
+    input()
