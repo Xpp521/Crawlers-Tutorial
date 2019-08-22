@@ -9,5 +9,5 @@
 - Crawler_IP138_Post.py：中国各省市的邮编区号爬虫。爬取网站：www.ip138.com/post 中各省市的邮编和区号信息，并将结果储存到Excel表格中。  
 （PS：使用pandas解析网页中的表格）
 
-- Crawler_Yesterday_Weather.py：天气爬虫。爬取当天天气并在凌晨发送邮件，第二天即可查看昨天的天气情况。
+- Crawler_Yesterday_Weather.py：天气爬虫。爬取当天天气并在凌晨发送邮件，这样第二天即可查看昨天的天气情况。  
 （PS：使用schedule执行定时任务）
