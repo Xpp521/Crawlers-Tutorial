@@ -2,8 +2,8 @@ import requests
 from os import mkdir
 from time import sleep
 from faker import Faker
-from os.path import exists
 from lxml.etree import HTML
+from os.path import exists, join
 from multiprocessing import Pool, Manager
 
 
@@ -13,7 +13,7 @@ class DouBanPictureSpider:
     """
 
     # 代理IP
-    proxies = [None]
+    proxies = [{'http': 'http://{}'.format(line.rstrip())} for line in open('proxies_2019_08_23.txt')]
 
     web_headers = {'Host': 'movie.douban.com',
                    'Referer': 'https://movie.douban.com/',
@@ -36,7 +36,7 @@ class DouBanPictureSpider:
             raise ValueError('子进程数必须是正整数！')
         if not isinstance(sleep_time, int) or 2 > sleep_time:
             raise ValueError('休眠时间必须是大于1正整数！')
-        if 'movie.douban.com' not in url:
+        if 'movie.douban.com' not in url or 'photos' not in url:
             raise ValueError('网址格式错误！')
         if 'all_photos' in url:
             raise ValueError('网址中包含多个图集，请输入具体图集网址！')
@@ -88,7 +88,7 @@ class DouBanPictureSpider:
                     print('【下载失败】{}，错误信息：{}，尝试重新下载......'.format(name, e))
                     continue
                 if img_res.status_code in (200, 304):
-                    with open('{}/{}'.format(title, name), 'wb') as file:
+                    with open(join(title, name), 'wb') as file:
                         file.write(img_res.content)
                     print('【下载成功】{}'.format(name))
                     break
@@ -117,8 +117,10 @@ class DouBanPictureSpider:
         package = {}
         for item in html.xpath('//*[@id="content"]/div/div[1]/ul/li/div[1]/a/img/@src'):
             img_url = item.replace('photo/m/public', 'photo/{}/public'.format(self.img_quality))
+            if 'r' != self.img_quality:
+                img_url = img_url.replace('.jpg', '.webp')
             filename = img_url.split('/')[-1]
-            if exists(filename):
+            if exists(join(self.title, filename)):
                 continue
             package['url'] = img_url
             package['name'] = filename
