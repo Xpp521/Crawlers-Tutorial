@@ -1,6 +1,9 @@
 # 文字类爬虫
 
 ### 项目简介
+- Crawler_Baidu_Translation.py：百度翻译爬虫。破解的接口是：https://fanyi.baidu.com/v2transapi  
+（PS：使用PyExecJS执行JS脚本）
+
 - Crawler_DouBan_Top250.py：豆瓣Top250爬虫。可爬取豆瓣Top250中的电影信息并储存到Excel表格中。
 
 - Crawler_GouBanJia_IP.py：爬取网站：www.goubanjia.com 中代理IP的爬虫。结果会自动复制到剪贴板，可以直接将结果粘贴到本项目其它爬虫脚本中使用。  
