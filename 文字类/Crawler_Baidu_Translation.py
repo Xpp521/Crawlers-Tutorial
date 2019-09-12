@@ -4,19 +4,6 @@ from time import sleep
 from requests.sessions import Session
 
 
-def get_first_key(d, value):
-    """
-    通过值查找字典中的第一个键。
-    :param d: 字典对象。
-    :param value: 值。
-    :return: 成功则返回键，否则返回None。
-    """
-    for k, v in d.items():
-        if value == v:
-            return k
-    return None
-
-
 class BaiduTranslator:
     """
     百度翻译类。
@@ -95,10 +82,12 @@ class BaiduTranslator:
         'vie': ['zh', 'en', 'ara', 'est', 'bul', 'pl', 'dan', 'de', 'ru', 'fra', 'fin', 'kor', 'nl', 'cs', 'rom', 'pt',
                 'jp', 'swe', 'slo', 'th', 'wyw', 'spa', 'el', 'hu', 'it', 'yue', 'cht']}
 
-    def __init__(self, source='en', target='zh', timeout=5):
+    def __init__(self, source='en', target='zh', timeout=5, proxies=None):
         """
         :param source: 源语言。
         :param target: 目标语言。
+        :param timeout: 超时时间。
+        :param proxies: 代理IP。
         """
         if source not in self.lang_list.keys():
             raise ValueError('Invalid source language.')
@@ -110,8 +99,9 @@ class BaiduTranslator:
                       'simple_means_flag': '3'}
         self.timeout = timeout
         self._session = Session()
-        self._session.headers['user-agent'] = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, ' \
-                                              'like Gecko) Chrome/55.0.2883.87 Safari/537.36 '
+        self.proxies = proxies
+        self._session.headers['user-agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, ' \
+                                              'like Gecko) Chrome/65.0.3325.162 Safari/537.36 '
         try:
             # 需要请求2次，因为第一次百度会发一个错误的token
             # 这里研究了好长时间，百度用心何其毒也（＃￣～￣＃）
@@ -133,18 +123,23 @@ class BaiduTranslator:
         """
         翻译方法。
         :param text: 待翻译文本。
-        :return: 若成功则返回翻译结果，否则返回空字符串。
+        :rtype: TranslationResult。
         """
         if not text or not isinstance(text, str):
-            return ''
+            return TranslationResult(False, msg='Invalid text.')
         self._data['query'] = text
         self._data['sign'] = self._js.call('e', text, self._gtk)  # 计算sign
-        response = self._session.post(self._api, self._data, timeout=self._timeout)
+        try:
+            response = self._session.post(self._api, self._data, timeout=self._timeout)
+        except Exception as e:
+            return TranslationResult(False, msg='Network error, msg:{}'.format(e))
         if 200 == response.status_code:
             json = response.json()
-            if not json.get('error'):
-                return json.get('trans_result').get('data')[0].get('dst')
-        return ''
+            if json.get('error'):
+                return TranslationResult(False, msg='Error code:{}'.format(json.get('error')))
+            else:
+                return TranslationResult(True, json.get('trans_result').get('data')[0].get('dst'))
+        return TranslationResult(False, msg='Network error, Status code:{}'.format(response.status_code))
 
     @property
     def source(self):
@@ -152,7 +147,10 @@ class BaiduTranslator:
 
     @source.setter
     def source(self, text):
-        self._data['from'] = text
+        if text in self.lang_list.keys():
+            self._data['from'] = text
+        else:
+            self._data['from'] = 'en'
 
     @property
     def target(self):
@@ -160,7 +158,10 @@ class BaiduTranslator:
 
     @target.setter
     def target(self, text):
-        self._data['to'] = text
+        if text in self.lang_map.get(self._data.get('from')):
+            self._data['to'] = text
+        else:
+            self._data['to'] = 'zh'
 
     @property
     def timeout(self):
@@ -171,21 +172,75 @@ class BaiduTranslator:
         self._timeout = t if isinstance(t, (float, int)) and 1 < t else 5
 
     @property
-    def api(self):
-        return self._api
+    def proxies(self):
+        return self._session.proxies
+
+    @proxies.setter
+    def proxies(self, p):
+        if isinstance(p, dict):
+            self._session.proxies = p
+        else:
+            self._session.proxies = {}
 
 
-def main():
+class TranslationResult:
+    """
+    翻译结果类。
+    """
+    def __init__(self, status, result='', msg=''):
+        """
+        :param status: 状态，True或False。
+        :param result: 翻译结果。
+        :param msg: 错误信息。
+        """
+        if not isinstance(status, bool):
+            raise TypeError('Status must be bool.')
+        self._status = status
+        self._result = result
+        self._msg = msg
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def result(self):
+        return self._result
+
+    @property
+    def msg(self):
+        return self._msg
+
+
+def get_first_key(d, value):
+    """
+    通过值反向获取字典中的第一个键。
+    :param d: 字典对象。
+    :param value: 值。
+    :return: 找到则返回键，否则返回None。
+    """
+    for k, v in d.items():
+        if value == v:
+            return k
+    return None
+
+
+def create_translator():
+    """
+    创建翻译器。
+    :return: 翻译器对象、源语言、目标语言。
+    """
     print('源语言：', BaiduTranslator.lang_list.values())
     source_language = get_first_key(BaiduTranslator.lang_list, input('\n输入源语言：').strip())
     print('\n支持的目标语言：', end='')
     for lang in BaiduTranslator.lang_map.get(source_language, []):
         print('{}'.format(BaiduTranslator.lang_list.get(lang)), end=' ')
     target_language = get_first_key(BaiduTranslator.lang_list, input('\n\n输入目标语言：').strip())
-    translator = BaiduTranslator(source_language, target_language)
-    while True:
-        print('翻译结果：{}'.format(translator.translate(input('\n输入待翻译文字：'))))
+    # timeout = input('输入超时时间（秒，按回车默认5秒）：').strip() or 5
+    return BaiduTranslator(source_language, target_language), source_language, target_language
 
 
 if __name__ == '__main__':
-    main()
+    translator, _, _ = create_translator()
+    while True:
+        print('翻译结果：{}'.format(translator.translate(input('\n输入待翻译文字：')).result))
