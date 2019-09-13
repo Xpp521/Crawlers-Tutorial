@@ -1,4 +1,5 @@
 from time import time
+from json import dumps
 from requests import get
 from pyperclip import copy
 from bs4 import BeautifulSoup
@@ -12,11 +13,11 @@ class Render(QtWebKit.QWebPage):
     def __init__(self, url):
         self.app = QtGui.QApplication([])
         QtWebKit.QWebPage.__init__(self)
-        self.loadFinished.connect(self._loadFinished)
+        self.loadFinished.connect(self.load_finished_handler)
         self.mainFrame().load(QtCore.QUrl(url))
         self.app.exec_()
 
-    def _loadFinished(self, result):
+    def load_finished_handler(self, result):
         self.frame = self.mainFrame()
         self.app.quit()
 
@@ -26,16 +27,23 @@ class Render(QtWebKit.QWebPage):
 
 
 class IpSpider:
-    url = 'http://www.goubanjia.com/'
+    _url = 'http://www.goubanjia.com/'
 
-    def test(self, socket):
+    @staticmethod
+    def test(proxy):
         """
         测试代理IP是否有效。
-        :param socket: IP:Port。
+        :param proxy: 代理IP。
         :return: 有效返回True，否则返回False。
         """
+        if proxy.get('http'):
+            url = 'http://icanhazip.com/'
+        elif proxy.get('https'):
+            url = 'https://www.ip.cn/'
+        else:
+            return False
         try:
-            get('http://www.ip38.com/', proxies={'http': 'http://' + socket}, timeout=5)
+            get(url, proxies=proxy, timeout=5)
         except Exception:
             return False
         return True
@@ -44,13 +52,11 @@ class IpSpider:
         begin_time = time()
         print('开始加载网页......')
         # 使用Render类渲染网页
-        response = Render(self.url)
-        content = response.frame.toHtml()
-        print('网页加载成功。（用时' + str(time() - begin_time) + '秒）')
-        print('开始测试ip......')
+        content = Render(self._url).frame.toHtml()
+        print('网页加载成功，用时{}秒。'.format(time() - begin_time))
+        print('开始测试ip......\n')
         bs = BeautifulSoup(content, 'lxml')
         ip_infos = bs.find_all('tr', style='')
-        strr = ''
         result = []
         for ip_info in ip_infos:
             contents = ip_info.contents
@@ -61,7 +67,7 @@ class IpSpider:
             # country2 = contents[7].a.next_sibling.next_sibling.string
             response_time = contents[11].string
             survival_time = contents[15].string
-            if '透明' == flag or ('http' != protocol and 'http,https' != protocol) or '中国' != country:
+            if '透明' == flag or protocol not in ('http', 'https', 'http,https') or '中国' != country:
                 continue
             ip_tag = contents[1]
             socket = ''
@@ -75,20 +81,38 @@ class IpSpider:
                 except AttributeError:
                     socket += tag
             socket = socket.replace('None', '')
-            if self.test(socket):
-                print(socket, flag, protocol, country, response_time, survival_time)
-                strr += "{'http': 'http://%s'},\n" % socket
-                result.append({'http': 'http://%s' % socket})
-        if '' == strr:
-            input('(⊙o⊙)...非常遗憾，本次没抓到可用的代理IP。')
-        else:
-            with open('代理IP.txt', 'a') as f:
-                f.write('{}\n\n'.format(strr))
-            copy(strr)
-            print('结果已复制到剪贴板~')
+            proxies = []
+            if 'http,https' == protocol:
+                proxies.append({'http': 'http://{}'.format(socket)})
+                proxies.append({'https': 'https://{}'.format(socket)})
+            else:
+                proxies.append({protocol: '{}://{}'.format(protocol, socket)})
+            for proxy in proxies:
+                if self.test(proxy):
+                    result.append(proxy)
+                    print(socket, flag, protocol, country, response_time, survival_time)
         return result
+
+    @property
+    def url(self):
+        return self._url
+
+
+def main():
+    filename = '代理IP.txt'
+    proxies = IpSpider().run()
+    if proxies:
+        text = '\n'.join([dumps(proxy) for proxy in proxies])
+        with open(filename, 'a') as f:
+            f.write('{}\n\n'.format(text))
+        print('\n结果已保存到“{}”中。'.format(filename))
+        copy(text)
+        print('结果已复制到剪贴板~\n')
+        print(text)
+    else:
+        print('非常遗憾，没抓到可用的代理IP(⊙o⊙)...')
 
 
 if __name__ == '__main__':
-    IpSpider().run()
+    main()
     input()
