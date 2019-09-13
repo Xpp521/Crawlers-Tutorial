@@ -13,21 +13,21 @@ class DouBanPictureSpider:
     """
 
     # 代理IP
-    proxies = [{'http': 'http://{}'.format(line.rstrip())} for line in open('proxies_2019_08_23.txt')]
+    proxies = [None]
 
     web_headers = {'Host': 'movie.douban.com',
                    'Referer': 'https://movie.douban.com/',
                    'Upgrade-Insecure-Requests': '1',
-                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                   'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                  'Chrome/55.0.2883.87 Safari/537.36'}
 
     img_headers = {'dnt': '1',
                    'referer': 'https://movie.douban.com/',
                    'upgrade-insecure-requests': '1'}
 
-    def __init__(self, url, process_num, sleep_time=7, img_quality=3):
+    def __init__(self, url, process_num, sleep_time=5, img_quality=2):
         """
-        :param url: 豆瓣图集网址。
+        :param url: 图集网址。
         :param process_num: 子进程数量。
         :param sleep_time: 子进程最大休眠时间。
         :param img_quality: 图片质量。
@@ -116,7 +116,8 @@ class DouBanPictureSpider:
         html = HTML(response.content.decode('utf-8'))
         package = {}
         for item in html.xpath('//*[@id="content"]/div/div[1]/ul/li/div[1]/a/img/@src'):
-            img_url = item.replace('photo/m/public', 'photo/{}/public'.format(self.img_quality))
+            img_url = item.replace('photo/m/public',
+                                   'photo/{}/public'.format(self.img_quality)).replace('https', 'http')
             if 'r' != self.img_quality:
                 img_url = img_url.replace('.jpg', '.webp')
             filename = img_url.split('/')[-1]
@@ -164,9 +165,9 @@ def main():
     process_number = int(input('输入子进程数量：'))
     process_sleep_time = int(input('输入最大休眠时间（秒）：'))
     while True:
-        quality = input('输入图片质量（1、2、3分别代表中、高、原图，按回车默认下载原图）：')
+        quality = input('输入图片质量（1、2、3分别代表中、高、原图，按回车默认下载高质量图）：')
         if quality in ('1', '2', '3', ''):
-            quality = int(quality) if quality else 3
+            quality = int(quality) if quality else 2
             break
         print('格式错误！')
         continue
