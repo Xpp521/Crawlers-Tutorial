@@ -102,7 +102,7 @@ def main():
     filename = '代理IP.txt'
     proxies = IpSpider().run()
     if proxies:
-        text = '\n'.join([dumps(proxy) for proxy in proxies])
+        text = '\n'.join(['{},'.format(dumps(proxy)) for proxy in proxies])
         with open(filename, 'a') as f:
             f.write('{}\n\n'.format(text))
         print('\n结果已保存到“{}”中。'.format(filename))
