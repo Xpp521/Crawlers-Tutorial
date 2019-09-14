@@ -365,9 +365,9 @@ class MziTuSpider:
                     print('【图集加载失败】{}，状态码：{}，尝试重新加载……'.format(name, response.status_code))
                 html = HTML(response.text)
                 img_url = html.xpath('/html/body/div[2]/div[1]/div[3]/p/a/img/@src')[0]
-                img_url = search('.*[a-z]\d', img_url).group()[:-1]
+                img_url = search(r'.*[a-z]\d', img_url).group()[:-1]
                 count = int(html.xpath('/html/body/div[2]/div[1]/div[4]/a[last()-1]/span/text()')[0])
-                print('【开始下载图集】{}（共{}张）'.format(name, count))
+                print('【开始下载图集】{}（{}张）'.format(name, count))
                 for i in range(1, count + 1):
                     sleep(f.random_int(1, sleep_time))
                     num = '0{}'.format(i) if 0 < i < 10 else i
@@ -519,7 +519,7 @@ def main():
         album_type = input('输入图集类型：').strip()
         if '专题' == album_type:
             print('专题图集分类：', list(MziTuSpider.zhuanti_channels.keys()))
-        album_type = input('输入专题图集类型：').strip()
+            album_type = input('输入专题图集类型：').strip()
         page = int(input('输入爬取页数：').strip())
         spider = MziTuSpider(process_num, album_type, page, sleep_time)
         spider.run()
