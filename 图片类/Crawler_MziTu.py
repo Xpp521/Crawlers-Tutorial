@@ -1,5 +1,6 @@
 import requests
 from os import mkdir
+from re import search
 from time import sleep
 from faker import Faker
 from enum import IntEnum
@@ -70,7 +71,6 @@ class MziTuSpider:
     channels = {'最新': 'https://www.mzitu.com/',
                 '最热': 'https://www.mzitu.com/hot/',
                 '推荐': 'https://www.mzitu.com/best/',
-                # '专题': 'https://www.mzitu.com/zhuanti/',
                 '性感': 'https://www.mzitu.com/xinggan/',
                 '日本': 'https://www.mzitu.com/japan/',
                 '台湾': 'https://www.mzitu.com/taiwan/',
@@ -79,34 +79,222 @@ class MziTuSpider:
                 '街拍': 'https://www.mzitu.com/jiepai/',
                 '所有': 'https://www.mzitu.com/all/'}
 
-    # 代理IP，没有就改成proxies = [None]
-    proxies = [{'http': 'http://{}'.format(line.rstrip())} for line in open('proxies_2019_08_19.txt')]
+    zhuanti_channels = {'COSPLAY': 'https://www.mzitu.com/tag/cosplay/',
+                        'Carry': 'https://www.mzitu.com/tag/carry/',
+                        'Cheryl青树': 'https://www.mzitu.com/tag/cheryl-qingshu/',
+                        'Egg尤妮丝': 'https://www.mzitu.com/tag/egg-younisi/',
+                        'Evelyn艾莉': 'https://www.mzitu.com/tag/evelyn-aili/',
+                        'Miki兔': 'https://www.mzitu.com/tag/miki-tu/',
+                        'Miko酱': 'https://www.mzitu.com/tag/miko-jiang/',
+                        'Milk楚楚': 'https://www.mzitu.com/tag/milk-chuchu/',
+                        'M梦Baby': 'https://www.mzitu.com/tag/meng-baby/',
+                        'OL诱惑': 'https://www.mzitu.com/tag/ol/',
+                        'SOLO尹菲': 'https://www.mzitu.com/tag/solo-yifei/',
+                        'Sukki': 'https://www.mzitu.com/tag/sukki/',
+                        'Wendy智秀': 'https://www.mzitu.com/tag/wendy-zhixiu/',
+                        'luvian本能': 'https://www.mzitu.com/tag/luvian/',
+                        'toro羽住': 'https://www.mzitu.com/tag/toro-yuzhu/',
+                        '丁筱南': 'https://www.mzitu.com/tag/dingxiaonian/',
+                        '丝袜': 'https://www.mzitu.com/tag/siwa/',
+                        '丹丹': 'https://www.mzitu.com/tag/dandan/',
+                        '乐乐Mango': 'https://www.mzitu.com/tag/lele-mango/',
+                        '乔依琳': 'https://www.mzitu.com/tag/qiaoyilin/',
+                        '于大小姐': 'https://www.mzitu.com/tag/yudaxiaojie/',
+                        '于姬una': 'https://www.mzitu.com/tag/yuji-una/',
+                        '亚里沙': 'https://www.mzitu.com/tag/yalisha/',
+                        '今野杏南': 'https://www.mzitu.com/tag/jinyexingnan/',
+                        '伊小七': 'https://www.mzitu.com/tag/yixiaoqi-momo/',
+                        '何嘉颖': 'https://www.mzitu.com/tag/hejiaying/',
+                        '何晨曦': 'https://www.mzitu.com/tag/hechenxi/',
+                        '佟蔓': 'https://www.mzitu.com/tag/tongman/',
+                        '冯木木': 'https://www.mzitu.com/tag/fengmumu-lris/',
+                        '凯竹BuiBui': 'https://www.mzitu.com/tag/kaizhu-buibui/',
+                        '刘奕宁': 'https://www.mzitu.com/tag/liuyining/',
+                        '刘娅希': 'https://www.mzitu.com/tag/liuyaxi/',
+                        '刘钰儿': 'https://www.mzitu.com/tag/liuyuer/',
+                        '刘飞儿': 'https://www.mzitu.com/tag/liufeier/',
+                        '制服诱惑': 'https://www.mzitu.com/tag/zhifu/',
+                        '前凸后翘': 'https://www.mzitu.com/tag/tugirl/',
+                        '卓娅祺': 'https://www.mzitu.com/tag/zhuoyaqi/',
+                        '南湘baby': 'https://www.mzitu.com/tag/nanxiang-baby/',
+                        '卤蛋luna': 'https://www.mzitu.com/tag/ludan-luna/',
+                        '原干惠': 'https://www.mzitu.com/tag/yuanganhui/',
+                        '叶佳颐': 'https://www.mzitu.com/tag/yejiayi/',
+                        '吉木梨纱': 'https://www.mzitu.com/tag/jimulisha/',
+                        '周于希': 'https://www.mzitu.com/tag/zhouyuxi-dummy/',
+                        '唐婉儿': 'https://www.mzitu.com/tag/tangwaner/',
+                        '唐思琪': 'https://www.mzitu.com/tag/tangsiqi/',
+                        '唐琪儿': 'https://www.mzitu.com/tag/tangqier-beauty/',
+                        '唐雨辰': 'https://www.mzitu.com/tag/tangyuchen/',
+                        '喜屋武千秋': 'https://www.mzitu.com/tag/xiwuwuqianqiu/',
+                        '嘉嘉Tiffany': 'https://www.mzitu.com/tag/jiajia-tiffany/',
+                        '嘉宝贝儿': 'https://www.mzitu.com/tag/jiabaobei/',
+                        '嘉琳winna': 'https://www.mzitu.com/tag/jialin-winna/',
+                        '土肥圆矮挫穷': 'https://www.mzitu.com/tag/tufeiyuanai/',
+                        '夏瑶baby': 'https://www.mzitu.com/tag/xiayao-baby/',
+                        '夏笑笑': 'https://www.mzitu.com/tag/xiaoxiao/',
+                        '夏美酱': 'https://www.mzitu.com/tag/xiameijiang/',
+                        '夏茉GIGI': 'https://www.mzitu.com/tag/xiamo-gigi/',
+                        '妲己Toxic': 'https://www.mzitu.com/tag/daji-toxic/',
+                        '姐妹花': 'https://www.mzitu.com/tag/jiemeihua/',
+                        '娜依灵儿': 'https://www.mzitu.com/tag/nayilinger/',
+                        '娜露Selena': 'https://www.mzitu.com/tag/selena/',
+                        '子纯儿annie': 'https://www.mzitu.com/tag/zhichuner-annie/',
+                        '孙梦瑶': 'https://www.mzitu.com/tag/sunmengyao/',
+                        '孟狐狸foxyini': 'https://www.mzitu.com/tag/foxyini/',
+                        '宅兔兔': 'https://www.mzitu.com/tag/zhaitutu/',
+                        '宋-KiKi': 'https://www.mzitu.com/tag/song-kiki/',
+                        '宋梓诺': 'https://www.mzitu.com/tag/songzinuo/',
+                        '小九月': 'https://www.mzitu.com/tag/xiaojiuyue/',
+                        '小尤奈': 'https://www.mzitu.com/tag/xiaoyounai/',
+                        '小清新': 'https://www.mzitu.com/tag/qingxin/',
+                        '小热巴': 'https://www.mzitu.com/tag/xiaoreba/',
+                        '小狐狸Sica': 'https://www.mzitu.com/tag/xiaohuli-sica/',
+                        '尤美Yumi': 'https://www.mzitu.com/tag/youmei-ann/',
+                        '岸明日香': 'https://www.mzitu.com/tag/hanmingrixiang/',
+                        '廿十': 'https://www.mzitu.com/tag/nianshi/',
+                        '张优': 'https://www.mzitu.com/tag/zhangyou/',
+                        '张栩菲': 'https://www.mzitu.com/tag/zhangxufei/',
+                        '张美荧': 'https://www.mzitu.com/tag/zhangmeiying/',
+                        '张雨萌': 'https://www.mzitu.com/tag/zhangyumeng/',
+                        '徐cake': 'https://www.mzitu.com/tag/xu-cake/',
+                        '徐微微': 'https://www.mzitu.com/tag/xuweiwei_mia/',
+                        '心妍小公主': 'https://www.mzitu.com/tag/xinyanxiaogongzhu/',
+                        '思淇Sukiii': 'https://www.mzitu.com/tag/siqi-sukiii/',
+                        '性感内衣': 'https://www.mzitu.com/tag/xingganneiyi/',
+                        '恩一': 'https://www.mzitu.com/tag/enyi/',
+                        '情趣SM': 'https://www.mzitu.com/tag/sm/',
+                        '慕羽茜': 'https://www.mzitu.com/tag/muyuqian/',
+                        '护士': 'https://www.mzitu.com/tag/hushi/',
+                        '旗袍': 'https://www.mzitu.com/tag/qipao/',
+                        '易阳': 'https://www.mzitu.com/tag/yiyang/',
+                        '晓茜sunny': 'https://www.mzitu.com/tag/xiaoqian-sunny/',
+                        '月音瞳': 'https://www.mzitu.com/tag/yueyintong/',
+                        '朱可儿': 'https://www.mzitu.com/tag/barbie-ker/',
+                        '杉原杏璃': 'https://www.mzitu.com/tag/sanyuanxingli/',
+                        '李七喜': 'https://www.mzitu.com/tag/liqixi/',
+                        '李可可': 'https://www.mzitu.com/tag/likeke/',
+                        '李宓儿': 'https://www.mzitu.com/tag/limier/',
+                        '李梓熙': 'https://www.mzitu.com/tag/lizixi/',
+                        '杜花花': 'https://www.mzitu.com/tag/duhuahua/',
+                        '杨依': 'https://www.mzitu.com/tag/yangyi/',
+                        '杨晨晨': 'https://www.mzitu.com/tag/xiaotianxin-gugar/',
+                        '杨漫妮': 'https://www.mzitu.com/tag/yangmanni/',
+                        '松果儿': 'https://www.mzitu.com/tag/songguoer/',
+                        '林美惠子': 'https://www.mzitu.com/tag/leimeihuizi/',
+                        '柳侑绮': 'https://www.mzitu.com/tag/liuyouqi/',
+                        '栗子Riz': 'https://www.mzitu.com/tag/lizi-riz/',
+                        '校花': 'https://www.mzitu.com/tag/xiaohua/',
+                        '梓萱Crystal': 'https://www.mzitu.com/tag/zixuan-crystal/',
+                        '梦心月': 'https://www.mzitu.com/tag/mengxinyue/',
+                        '森下悠里': 'https://www.mzitu.com/tag/shenxiayouli/',
+                        '楚恬Olivia': 'https://www.mzitu.com/tag/chutian_olivia/',
+                        '比基尼': 'https://www.mzitu.com/tag/bikini/',
+                        '沈佳熹': 'https://www.mzitu.com/tag/shenjiaxi/',
+                        '沈梦瑶': 'https://www.mzitu.com/tag/shenmengyao/',
+                        '沈蜜桃': 'https://www.mzitu.com/tag/shenmitao/',
+                        '沫晓伊baby': 'https://www.mzitu.com/tag/moxiaoyi/',
+                        '混血美女': 'https://www.mzitu.com/tag/hunxue/',
+                        '清纯美女': 'https://www.mzitu.com/tag/qingchun/',
+                        '温心怡': 'https://www.mzitu.com/tag/wenxinyi/',
+                        '湿身诱惑': 'https://www.mzitu.com/tag/shishen/',
+                        '潘娇娇': 'https://www.mzitu.com/tag/panjiaojiao/',
+                        '热裤': 'https://www.mzitu.com/tag/reku/',
+                        '熊吖BOBO': 'https://www.mzitu.com/tag/bobo/',
+                        '熟女少妇': 'https://www.mzitu.com/tag/shunvshaofu/',
+                        '爆乳': 'https://www.mzitu.com/tag/baoru/',
+                        '爱丽莎': 'https://www.mzitu.com/tag/ailisha/',
+                        '猩一': 'https://www.mzitu.com/tag/xingyi/',
+                        '王婉悠': 'https://www.mzitu.com/tag/wangwanyou/',
+                        '王梓童': 'https://www.mzitu.com/tag/wangzitong-doirs/',
+                        '王雨纯': 'https://www.mzitu.com/tag/wangyuchun/',
+                        '王馨瑶': 'https://www.mzitu.com/tag/wangxinyao/',
+                        '玛鲁娜manuela': 'https://www.mzitu.com/tag/manuela/',
+                        '琳琳ailin': 'https://www.mzitu.com/tag/linlin-ailin/',
+                        '瑞瑞ruirui': 'https://www.mzitu.com/tag/ruirui/',
+                        '瑞莎Trista': 'https://www.mzitu.com/tag/ruisha/',
+                        '甜美女孩': 'https://www.mzitu.com/tag/tianmei/',
+                        '田熙玥': 'https://www.mzitu.com/tag/tianxiyue/',
+                        '睡衣诱惑': 'https://www.mzitu.com/tag/shuiyiyouhuo/',
+                        '穆菲菲': 'https://www.mzitu.com/tag/mufeifei/',
+                        '空姐': 'https://www.mzitu.com/tag/kongjie/',
+                        '筱崎爱': 'https://www.mzitu.com/tag/xiaoqiai/',
+                        '筱慧icon': 'https://www.mzitu.com/tag/xiaohui/',
+                        '米妮大萌萌': 'https://www.mzitu.com/tag/minida/',
+                        '米雪': 'https://www.mzitu.com/tag/mixue/',
+                        '纯小希': 'https://www.mzitu.com/tag/chunxiaoxi/',
+                        '绮里嘉ula': 'https://www.mzitu.com/tag/qilijia/',
+                        '绯月樱': 'https://www.mzitu.com/tag/xiezhixin/',
+                        '网袜': 'https://www.mzitu.com/tag/wangwa/',
+                        '美女走光': 'https://www.mzitu.com/tag/zouguang/',
+                        '美腿': 'https://www.mzitu.com/tag/leg/',
+                        '美臀翘臀': 'https://www.mzitu.com/tag/meitun/',
+                        '考拉koala': 'https://www.mzitu.com/tag/kaola-koala/',
+                        '艺轩': 'https://www.mzitu.com/tag/yixuan/',
+                        '艾小青': 'https://www.mzitu.com/tag/aixiaoqing/',
+                        '艾栗栗': 'https://www.mzitu.com/tag/ailili/',
+                        '芝芝Booty': 'https://www.mzitu.com/tag/zhizhi-booty/',
+                        '萌汉药baby': 'https://www.mzitu.com/tag/menghanyao-baby/',
+                        '萌琪琪': 'https://www.mzitu.com/tag/mengqiqi/',
+                        '萌萌Vivian': 'https://www.mzitu.com/tag/mengmeng-vivian/',
+                        '萝莉': 'https://www.mzitu.com/tag/luoli/',
+                        '蔡文钰': 'https://www.mzitu.com/tag/caiwenyu-angle/',
+                        '许诺sabrina': 'https://www.mzitu.com/tag/xunuo/',
+                        '诗朵雅': 'https://www.mzitu.com/tag/shiduoya/',
+                        '诗诗sissi': 'https://www.mzitu.com/tag/xiuren-sisi/',
+                        '诱惑': 'https://www.mzitu.com/tag/youhuo/',
+                        '赵伊彤': 'https://www.mzitu.com/tag/zhaoyitong/',
+                        '赵小米': 'https://www.mzitu.com/tag/zhaoxiaomi/',
+                        '车模': 'https://www.mzitu.com/tag/chemo/',
+                        '邹晶晶': 'https://www.mzitu.com/tag/zoujingjing/',
+                        '郭婉祈': 'https://www.mzitu.com/tag/guowanqi/',
+                        '闵妮Mily': 'https://www.mzitu.com/tag/minni-mily/',
+                        '陆梓琪': 'https://www.mzitu.com/tag/luziqi/',
+                        '陆瓷': 'https://www.mzitu.com/tag/luchi/',
+                        '陈思琪art': 'https://www.mzitu.com/tag/chensiqi/',
+                        '陈思雨': 'https://www.mzitu.com/tag/chensiyu/',
+                        '陈怡曼': 'https://www.mzitu.com/tag/chenyiman/',
+                        '雪千寻': 'https://www.mzitu.com/tag/xueqianxun/',
+                        '韩恩熙': 'https://www.mzitu.com/tag/hanenxi/',
+                        '顾欣怡': 'https://www.mzitu.com/tag/guxinyi/',
+                        '顾灿': 'https://www.mzitu.com/tag/gucan/',
+                        '黄可christine': 'https://www.mzitu.com/tag/huangke/',
+                        '黄楽然': 'https://www.mzitu.com/tag/huangleran/',
+                        '黄歆苑': 'https://www.mzitu.com/tag/huangxinyuan/',
+                        '黑丝': 'https://www.mzitu.com/tag/heisi/',
+                        '齐B小短裙': 'https://www.mzitu.com/tag/duanqun/',
+                        '龍籹cool': 'https://www.mzitu.com/tag/panpanlongnv-sunny/'}
+
+    # 代理IP
+    proxies = [None]
 
     web_headers = {'Upgrade-Insecure-Requests': '1',
-                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                                 'Chrome/55.0.2883.87 Safari/537.36'}
+                   'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                 'Chrome/65.0.3325.162 Safari/537.36'}
 
     img_headers = {'referer': 'https://www.mzitu.com/', 'Upgrade-Insecure-Requests': '1'}
 
-    def __init__(self, process_num, channel='最新', page_num=1, sleep_time=2.3, timeout=7):
+    def __init__(self, process_num, channel='最新', page_num=1, sleep_time=2, timeout=5):
         """
         :param process_num: 子进程数量。
         :param channel: 图片分类。
         :param page_num: 爬取的页数。
-        :param sleep_time: 睡眠时间。
+        :param sleep_time: 休眠时间。
         :param timeout: 超时等待时间。
         """
-        if not isinstance(process_num, int) or not isinstance(sleep_time, float)\
+        if not isinstance(process_num, int) or not isinstance(sleep_time, int)\
                 or not isinstance(timeout, (float, int)):
             raise TypeError('参数类型错误。')
-        if channel not in self.channels.keys() or 1 > page_num or 1 > process_num or 1 > sleep_time:
+        if channel not in self.channels.keys() and channel not in self.zhuanti_channels.keys():
+            raise ValueError('图片类型错误。')
+        if 1 > page_num or 1 > process_num or 1 > sleep_time:
             raise ValueError('参数值错误。')
         self.channel = channel
         self.page_num = page_num
         self.process_num = process_num
         self.sleep_time = sleep_time
         self.timeout = timeout
-        self._url = self.channels.get(channel)
+        self._url = self.channels.get(channel) or self.zhuanti_channels.get(channel)
         self._queue = Manager().Queue()
         self._pool = ''
 
@@ -175,10 +363,12 @@ class MziTuSpider:
                     if 200 == response.status_code:
                         break
                     print('【图集加载失败】{}，状态码：{}，尝试重新加载……'.format(name, response.status_code))
-                img_url = HTML(response.text).xpath('/html/body/div[2]/div[1]/div[3]/p/a/img/@src')[0]
-                img_url = img_url[: img_url.rfind('/') + 4]
-                print('【开始下载图集】', name)
-                for i in range(1, 100):
+                html = HTML(response.text)
+                img_url = html.xpath('/html/body/div[2]/div[1]/div[3]/p/a/img/@src')[0]
+                img_url = search('.*[a-z]\d', img_url).group()[:-1]
+                count = int(html.xpath('/html/body/div[2]/div[1]/div[4]/a[last()-1]/span/text()')[0])
+                print('【开始下载图集】{}（共{}张）'.format(name, count))
+                for i in range(1, count + 1):
                     sleep(f.random_int(1, sleep_time))
                     num = '0{}'.format(i) if 0 < i < 10 else i
                     while True:
@@ -208,9 +398,9 @@ class MziTuSpider:
 
     def parse_album(self, url):
         """
-        解析图集方法。将其中的图片信息打包成数据包，输入到队列中。
+        图集解析方法。将图集中的图片信息打包成数据包，输入到队列中。
         :param url: 图集网址。
-        :return: 成功返回1，若网址不存在返回0。
+        :rtype: bool。
         """
         while True:
             try:
@@ -222,7 +412,7 @@ class MziTuSpider:
                 break
             if 404 == response.status_code:
                 print('【图集加载失败】{}，状态码：404'.format(url))
-                return 0
+                return False
             print('【图集加载失败】{}，状态码：{}，尝试重新加载……'.format(url, response.status_code))
         content = HTML(response.text)
         base_url = content.xpath('/html/body/div[2]/div[1]/div[3]/p/a/img/@src')[0]
@@ -231,19 +421,19 @@ class MziTuSpider:
             page_num = int(content.xpath('/html/body/div[2]/div[1]/div[4]/a[last()-1]/span/text()')[0])
         except ValueError:
             print('【图集解析失败】{}，失败原因：页码解析失败。'.format(url))
-            return 0
+            return False
         for i in range(1, page_num + 1):
             num = '0{}'.format(i) if 0 < i < 10 else '{}'.format(i)
             self._queue.put_nowait(Package(PackageType.IMG, num, '{}{}.jpg'.format(base_url, num),
                                            content.xpath('/html/body/div[2]/div[1]/div[3]/p/a/img/@alt')[0]))
         print('【图集解析完成】{}，数据包数量：{}'.format(url, self._queue.qsize()))
-        return 1
+        return True
 
     def parse_html(self, url):
         """
-        解析网页方法。将其中的图片或图集信息打包成数据包，输入到队列中。
+        网页解析方法。将网页的图片或图集信息打包成数据包，输入到队列中。
         :param url: 网址。
-        :return: 成功返回1，若网址不存在返回0。
+        :rtype: bool。
         """
         while True:
             try:
@@ -254,7 +444,7 @@ class MziTuSpider:
             if 200 == response.status_code:
                 break
             if 404 == response.status_code:
-                return 0
+                return False
         content = HTML(response.text)
         channel = self.channel
         # 不同的分类对应不同的解析方法
@@ -273,12 +463,12 @@ class MziTuSpider:
                 self._queue.put_nowait(Package(PackageType.ALBUM, a_tag.xpath('img/@alt')[0], a_tag.xpath('@href')[0],
                                                channel))
         print('【网页加载完成】{}，数据包数量：{}'.format(url, self._queue.qsize()))
-        return 1
+        return True
 
     def run(self, album_url=''):
         """
         运行爬虫。若存在图集地址则爬取指定图集，否则按照设置爬取分类图片。
-        :param album_url: 图集地址。
+        :param album_url: 图集网址。
         """
         print('——————————————开始(⊙o⊙)下载——————————————')
         # 初始化进程池
@@ -302,7 +492,7 @@ class MziTuSpider:
                 if not self.parse_html(url):
                     break
                 sleep(self.sleep_time)
-        # 向队列中输入空包，子进程收到空包就会结束进程
+        # 向队列中输入空包，子进程收到空包会自动结束进程
         for _ in range(self.process_num):
             self._queue.put_nowait(Package(PackageType.EMPTY))
         # 关闭进程池
@@ -313,16 +503,30 @@ class MziTuSpider:
 
 
 def main():
-    album_url = input('输入图集网址：').strip()
+    while True:
+        c = input('选择爬虫类型：\n1\t爬取分类图集\n2\t爬取指定图集\n输入对应序号（按“回车”选择爬取指定图集）：').strip()
+        if c not in ('1', '2', ''):
+            print('序号错误，重新输入！\n')
+            continue
+        c = int(c) if c else 2
+        break
     process_num = int(input('输入子进程数量：').strip())
-    sleep_time = float(input('输入最大休眠时间：').strip())
-    # for k in MziTuSpider.channels.keys():
-    #     print('\t{}'.format(k), end='')
-    # channel = input('\n请选择图片类型：')
-    # page_num = int(input('请输入下载的页数：'))
-    # spider = MziTuSpider(process_num, channel, page_num, sleep_time)
-    spider = MziTuSpider(process_num, sleep_time=sleep_time)
-    spider.run(album_url)
+    sleep_time = int(input('输入最大休眠时间：').strip())
+    if 1 == c:
+        channels = list(MziTuSpider.channels.keys())
+        channels.append('专题')
+        print('图集分类：', channels)
+        album_type = input('输入图集类型：').strip()
+        if '专题' == album_type:
+            print('专题图集分类：', list(MziTuSpider.zhuanti_channels.keys()))
+        album_type = input('输入专题图集类型：').strip()
+        page = int(input('输入爬取页数：').strip())
+        spider = MziTuSpider(process_num, album_type, page, sleep_time)
+        spider.run()
+    else:
+        album_url = input('输入图集网址：').strip()
+        spider = MziTuSpider(process_num, sleep_time=sleep_time)
+        spider.run(album_url)
 
 
 if __name__ == '__main__':
