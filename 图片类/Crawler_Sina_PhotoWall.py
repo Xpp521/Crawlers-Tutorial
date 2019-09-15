@@ -1,20 +1,20 @@
 import requests
 from os import mkdir
+from re import findall
 from faker import Faker
-from lxml.etree import HTML
 from time import time, sleep
 from os.path import exists, join
 from multiprocessing import Pool, Manager
 
-img_headers = {'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-               'accept-encoding': 'gzip, deflate, sdch, br',
-               'accept-language': 'zh-CN,zh;q=0.8',
-               'cache-control': 'no-cache',
-               'pragma': 'no-cache',
-               'dnt': '1',
+img_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+               'Accept-Encoding': 'gzip, deflate, sdch',
+               'Accept-Language': 'zh-CN,zh;q=0.8',
+               'Cache-Control': 'no-cache',
+               'Pragma': 'no-cache',
+               'DNT': '1',
+               'Connection': 'keep-alive',
                # 'Host': 'wx1.sinaimg.cn',
-               # 'Referer': 'http://photo.weibo.com/',
-               'upgrade-insecure-requests': '1'}
+               'Upgrade-Insecure-Requests': '1'}
 
 headers = {'Accept': '*/*',
            'Accept-Encoding': 'gzip, deflate, sdch, br',
@@ -28,11 +28,20 @@ headers = {'Accept': '*/*',
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [{'http': 'http://117.191.11.109:80'},
-           {'http': 'http://183.146.213.198:80'},
-           {'http': 'http://183.146.213.157:80'},
-           {'http': 'http://39.137.69.10:8080'},
-           {'http': 'http://39.137.69.7:8080'}]
+proxies = [{"http": "http://39.137.168.230:80"},
+           {"http": "http://120.210.219.73:8080"},
+           {"http": "http://39.135.24.11:8080"},
+           {"http": "http://119.179.161.126:8060"},
+           {"http": "http://27.208.93.161:8060"},
+           {"http": "http://111.29.3.190:80"},
+           {"http": "http://111.29.3.189:8080"},
+           {"http": "http://124.161.160.251:8085"},
+           {"http": "http://111.29.3.225:8080"},
+           {"http": "http://36.25.243.251:80"},
+           {"http": "http://183.146.213.157:80"},
+           {"http": "http://39.137.69.7:8080"},
+           {"http": "http://113.107.5.100:8080"},
+           {"http": "http://39.137.168.230:80"}]
 
 
 def download_img(queue, sleep_time, folder):
@@ -42,7 +51,7 @@ def download_img(queue, sleep_time, folder):
     :param sleep_time: 休眠时间。
     :param folder: 文件夹名称。
     """
-    global proxies
+    global proxies, img_headers
     f = Faker()
     buffer_size = 1024
     while True:
@@ -66,18 +75,19 @@ def download_img(queue, sleep_time, folder):
                 response = requests.get(url, headers=img_headers, proxies=proxies[f.random_digit() % len(proxies)],
                                         timeout=(11, None), stream=True)
             except Exception as e:
-                print(url, '下载失败，错误信息：{}，尝试重新下载......'.format(e))
+                print('【下载失败】{}，错误信息：{}，尝试重新下载......'.format(url, e))
                 continue
             if response.status_code in (200, 304):
                 with open(join(folder, title), 'wb') as file:
-                    # file.write(response.content)
                     # 图片的体积较大，采用流方式写入
                     for chunk in response.iter_content(buffer_size):
                         if chunk:
                             file.write(chunk)
-                print(url, '下载完成。')
+                print('【下载成功】{}'.format(url))
                 break
-            print(url, '下载失败，错误码：{}，尝试重新下载......'.format(response.status_code))
+            elif 404 == response.status_code:
+                continue
+            print('【下载失败】{}，状态码：{}，尝试重新下载......'.format(url, response.status_code))
             continue
         # 休眠
         sleep(f.random_int(1, sleep_time))
@@ -121,7 +131,7 @@ def main():
               'ajax_call': 1}
     package = {}
     for i in range(1, page_num + 1):
-        sleep(sleep_time)
+        sleep(faker.random_int(1, sleep_time))
         # 第1页解析方法
         if 1 == i:
             while True:
@@ -129,14 +139,13 @@ def main():
                     response = requests.get(url, headers=headers,
                                             proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
                 except Exception as e:
-                    print('加载页面出错，错误信息：{}\n尝试重新加载……'.format(e))
+                    print('第1页加载失败，错误信息：{}\n尝试重新加载……'.format(e))
                     continue
                 if response.status_code not in (200, 304):
-                    print('加载页面出错，错误码：{}\n尝试重新加载……'.format(response.status_code))
+                    print('第1页加载失败，状态码：{}\n尝试重新加载……'.format(response.status_code))
                     continue
                 break
             text = response.text
-            content = HTML(text[text.rfind('html":"') + 7: text.rfind('"')])
             folder = text[text.find('<title>') + 7: text.find('</title>')].replace('微博_微博', '照片墙')
             if not exists(folder):
                 mkdir(folder)
@@ -144,42 +153,41 @@ def main():
             for _ in range(process_num):
                 pool.apply_async(download_img, [queue, sleep_time, folder])
             print('——————————————开始下载——————————————')
-            for img in content.xpath("//a[@class='\\\"ph_ar_box\\\"']/img/@src"):
-                img_data = img.split('/')
-                package['title'] = img_data[-2][:img_data[-2].rfind('?')]
-                package['url'] = 'https://{}/large/{}'.format(img_data[2][:img_data[2].find('\\')],
-                                                              package.get('title'))
+            for img_data in findall(r'<a class=\\"ph_ar_box.*?src=(.*?)>',
+                                    text[text.rfind('html":"') + 7: text.rfind('"')]):
+                img_data = img_data.replace('/', '').split('\\')
+                package['title'] = img_data[-3][:img_data[-3].rfind('?')]
+                package['url'] = 'http://{}/large/{}'.format(img_data[3], package.get('title'))
                 queue.put_nowait(package)
-            temp = text[text.rfind('WB_cardwrap S_bg2'):]
-            action_data = temp[temp.find('action-data') + 14: temp.find(r'\">')]
-            set_params(action_data, params)
-            continue
         # 其它页解析方法
-        while True:
-            try:
-                # 模拟发送ajax请求
-                response = requests.get('https://weibo.com/p/aj/album/loading', params=params, headers=headers,
-                                        proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
-            except Exception as e:
-                print('加载页面出错，错误信息：{}\n尝试重新加载……'.format(e))
-                continue
-            if response.status_code not in (200, 304):
-                print('加载页面出错，错误码：{}\n尝试重新加载……'.format(response.status_code))
-                continue
-            break
-        json = response.json()
-        if json.get('code') != '100000':
-            print('第{}页加载失败，失败原因：{}'.format(params.get('page'), json.get('msg')))
-            break
-        content = HTML(json.get('data'))
-        for img in content.xpath('/html/body/div/ul/li/div/a[@class="ph_ar_box"]/img/@src'):
-            img_data = img.split('/')
-            package['title'] = img_data[-1][:img_data[-1].rfind('?')]
-            package['url'] = 'https://{}/large/{}'.format(img_data[2], package.get('title'))
-            queue.put_nowait(package)
-        action_data = content.xpath('//div[@class="WB_cardwrap S_bg2"]/@action-data')[0]
+        else:
+            while True:
+                try:
+                    # 模拟发送ajax请求
+                    response = requests.get('https://weibo.com/p/aj/album/loading', params=params, headers=headers,
+                                            proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
+                except Exception as e:
+                    print('第{}页加载失败，错误信息：{}\n尝试重新加载……'.format(i, e))
+                    continue
+                if response.status_code not in (200, 304):
+                    print('第{}页加载失败，状态码：{}\n尝试重新加载……'.format(i, response.status_code))
+                    continue
+                json = response.json()
+                if '100000' != json.get('code'):
+                    print('第{}页加载失败，失败原因：{}\n尝试重新加载……'.format(i, json.get('msg')))
+                    continue
+                break
+            text = json.get('data')
+            for img_data in findall(r'<a class="ph_ar_box.*?src="(.*?)>', text):
+                img_data = img_data.split('/')
+                package['title'] = img_data[-2][:img_data[-2].rfind('?')]
+                package['url'] = 'http://{}/large/{}'.format(img_data[2], package.get('title'))
+                queue.put_nowait(package)
+        temp = text[text.rfind('WB_cardwrap S_bg2'):]
+        action_data = temp[temp.find('"type') + 1: temp.find(r'\">')]
         # 设置下一页ajax请求时的参数
         set_params(action_data, params)
+        print('第{}页解析完成。'.format(i))
     # 向队列中输入0，通知子进程结束
     for _ in range(process_num):
         queue.put_nowait(0)
