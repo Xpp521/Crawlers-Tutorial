@@ -116,8 +116,6 @@ class BaiduTranslator:
         self._data['token'] = search("token: '(.*?)',", text).groups()[0]
         self._gtk = search("window.gtk = '(.*?)';", text).groups()[0]
         self._js = execjs.compile(open(self._js_file).read())
-        # print('token =', self._data.get('token'))
-        # print('gtk =', self._gtk)
 
     def translate(self, text):
         """
@@ -211,13 +209,16 @@ class TranslationResult:
     def msg(self):
         return self._msg
 
+    def __repr__(self):
+        return self._result
+
 
 def get_first_key(d, value):
     """
-    通过值反向获取字典中的第一个键。
+    通过值反向获取字典中对应的的第一个键。
     :param d: 字典对象。
     :param value: 值。
-    :return: 找到则返回键，否则返回None。
+    :return: 找到则返回第一个符合的键，否则返回None。
     """
     for k, v in d.items():
         if value == v:
@@ -230,17 +231,14 @@ def create_translator():
     创建翻译器。
     :return: 翻译器对象、源语言、目标语言。
     """
-    print('源语言：', BaiduTranslator.lang_list.values())
+    print('源语言：{}'.format(', '.join(BaiduTranslator.lang_list.values())))
     source_language = get_first_key(BaiduTranslator.lang_list, input('\n输入源语言：').strip())
-    print('\n支持的目标语言：', end='')
-    for lang in BaiduTranslator.lang_map.get(source_language, []):
-        print('{}'.format(BaiduTranslator.lang_list.get(lang)), end=' ')
-    target_language = get_first_key(BaiduTranslator.lang_list, input('\n\n输入目标语言：').strip())
-    # timeout = input('输入超时时间（秒，按回车默认5秒）：').strip() or 5
+    print('\n目标语言：{}'.format(', '.join([BaiduTranslator.lang_list.get(lang) for lang in BaiduTranslator.lang_map.get(source_language, [])])))
+    target_language = get_first_key(BaiduTranslator.lang_list, input('\n输入目标语言：').strip())
     return BaiduTranslator(source_language, target_language), source_language, target_language
 
 
 if __name__ == '__main__':
-    translator, _, _ = create_translator()
+    translator, *_ = create_translator()
     while True:
-        print('翻译结果：{}'.format(translator.translate(input('\n输入待翻译文字：')).result))
+        print('翻译结果：{}'.format(translator.translate(input('\n输入待翻译文字：'))))
