@@ -1,10 +1,14 @@
-import requests
 from os import mkdir
+from sys import path
 from re import findall
 from faker import Faker
+from requests import get
+from getpass import getpass
 from time import time, sleep
 from os.path import exists, join
 from multiprocessing import Pool, Manager
+path.append('../')
+from 文字类.Crawler_Sina_Weibo_Login import WeiboLogin
 
 img_headers = {'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                'Accept-Encoding': 'gzip, deflate, sdch',
@@ -28,20 +32,7 @@ headers = {'Accept': '*/*',
                          'Chrome/55.0.2883.87 Safari/537.36 '}
 
 # 代理IP
-proxies = [{"http": "http://39.137.168.230:80"},
-           {"http": "http://120.210.219.73:8080"},
-           {"http": "http://39.135.24.11:8080"},
-           {"http": "http://119.179.161.126:8060"},
-           {"http": "http://27.208.93.161:8060"},
-           {"http": "http://111.29.3.190:80"},
-           {"http": "http://111.29.3.189:8080"},
-           {"http": "http://124.161.160.251:8085"},
-           {"http": "http://111.29.3.225:8080"},
-           {"http": "http://36.25.243.251:80"},
-           {"http": "http://183.146.213.157:80"},
-           {"http": "http://39.137.69.7:8080"},
-           {"http": "http://113.107.5.100:8080"},
-           {"http": "http://39.137.168.230:80"}]
+proxies = [None]
 
 
 def download_img(queue, sleep_time, folder):
@@ -72,8 +63,8 @@ def download_img(queue, sleep_time, folder):
         # img_headers['Host'] = url.split('/')[2]
         while True:
             try:
-                response = requests.get(url, headers=img_headers, proxies=proxies[f.random_digit() % len(proxies)],
-                                        timeout=(11, None), stream=True)
+                response = get(url, headers=img_headers, proxies=proxies[f.random_digit() % len(proxies)],
+                               timeout=(11, None), stream=True)
             except Exception as e:
                 print('【下载失败】{}，错误信息：{}，尝试重新下载......'.format(url, e))
                 continue
@@ -109,14 +100,11 @@ def set_params(action_data, params_dict):
 
 def main():
     global proxies
-    # url = 'https://weibo.com/p/1004061393786362/photos?from=page_100406&mod=TAB'
-    url = input('请输入照片墙网址：').strip()
-    # 需要先登录微博，然后在任意微博页面打开开发者工具（按F12），刷新页面
-    # 在Network标签\里找到第一个请求，在请求的Request Headers里边复制Cookie即可。
-    # PS：模拟登录功能正在编写中，敬请期待……
-    cookie = input('请输入Cookie：').strip()
-    headers['Referer'] = url
-    headers['Cookie'] = cookie
+    session = WeiboLogin(input('用户名：').strip(), getpass('密码：').strip()).login()
+    if not session:
+        print('登录失败。')
+        return
+    url = input('输入照片墙网址：').strip()
     page_num = int(input('输入页数：'))
     process_num = int(input('输入子进程数量：'))
     sleep_time = float(input('输入子进程休眠时间（秒）：'))
@@ -136,8 +124,7 @@ def main():
         if 1 == i:
             while True:
                 try:
-                    response = requests.get(url, headers=headers,
-                                            proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
+                    response = session.get(url, proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
                 except Exception as e:
                     print('第1页加载失败，错误信息：{}\n尝试重新加载……'.format(e))
                     continue
@@ -164,8 +151,8 @@ def main():
             while True:
                 try:
                     # 模拟发送ajax请求
-                    response = requests.get('https://weibo.com/p/aj/album/loading', params=params, headers=headers,
-                                            proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
+                    response = session.get('https://weibo.com/p/aj/album/loading', params=params,
+                                           proxies=proxies[faker.random_digit() % len(proxies)], timeout=11)
                 except Exception as e:
                     print('第{}页加载失败，错误信息：{}\n尝试重新加载……'.format(i, e))
                     continue
