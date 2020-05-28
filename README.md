@@ -2,6 +2,7 @@
 
 ### 1、简介
 爬虫脚本合集。包含文字、视频、图片等多种类型，适用于初学者研究。
+本人的多进程爬虫框架 → [MultiprocessingSpider](https://github.com/Xpp521/MultiprocessingSpider "MultiprocessingSpider")
 
 ### 2、关键技术
 - 网页加载：requests、PyQt；
